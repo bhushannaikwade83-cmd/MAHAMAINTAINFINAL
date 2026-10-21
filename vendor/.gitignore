@@ -1,0 +1,30 @@
+# Configuration files with secrets
+server/vendor_config.php
+server/config.php
+
+# Flutter
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+pubspec.lock
+
+# Misc
+*.log
+.env
+.env.local
+.jwt-secret.local
