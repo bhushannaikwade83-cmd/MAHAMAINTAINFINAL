@@ -1,0 +1,71 @@
+<?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+try {
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    if (!$input || empty($input['phone_number']) || empty($input['mpin'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'phone_number and mpin are required']);
+        exit;
+    }
+
+    $phoneNumber = $input['phone_number'];
+    $mpin = $input['mpin'];
+
+    $conn = new mysqli('localhost', 'digitrix_maha_user', 'maha_user@70', 'digitrix_maha_maintain_pro');
+
+    if ($conn->connect_error) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Database connection failed']);
+        exit;
+    }
+
+    // Fetch M-PIN hash for the phone number
+    $stmt = $conn->prepare("SELECT mpin_hash FROM user_mpin WHERE phone_number = ?");
+
+    if (!$stmt) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Database error: ' . $conn->error]);
+        $conn->close();
+        exit;
+    }
+
+    $stmt->bind_param("s", $phoneNumber);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 0) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => 'M-PIN not set for this phone number']);
+        $stmt->close();
+        $conn->close();
+        exit;
+    }
+
+    $row = $result->fetch_assoc();
+    $storedHash = $row['mpin_hash'];
+
+    // Verify the M-PIN using password_verify
+    if (password_verify($mpin, $storedHash)) {
+        echo json_encode(['success' => true, 'message' => 'M-PIN verified successfully']);
+    } else {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => 'Incorrect M-PIN']);
+    }
+
+    $stmt->close();
+    $conn->close();
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+}
+?>
